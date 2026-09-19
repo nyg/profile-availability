@@ -4,7 +4,7 @@ Guidance for AI coding agents working in this repo. Keep it accurate: update it 
 
 ## What this is
 
-A single-file Python checker, `profile-availability.py`, that loops forever: every `CHECK_INTERVAL` seconds it opens each configured profile URL in Chrome through SeleniumBase's CDP driver, decides `online` or `offline` from the page text, records changes, and emails them through the Resend REST API. [README.md](README.md) documents the user-facing behavior, config keys and files.
+A single-file Python checker, `profile-availability.py`, that loops forever: every `CHECK_INTERVAL` seconds it opens each configured profile URL in Chrome through SeleniumBase's CDP driver, decides `online` or `offline` from the page text, reads the location, records changes, and emails each round's changes as one digest through the Resend REST API. [README.md](README.md) documents the user-facing behavior, config keys and files.
 
 ## Layout
 
@@ -32,9 +32,9 @@ Point the three XDG variables at a scratch directory to avoid touching the user'
 
 **Paths follow XDG** and never point inside the checkout: config in `$XDG_CONFIG_HOME/profile-availability`, status and error logs plus `run.log` in `$XDG_DATA_HOME/profile-availability`, screenshots and debug HTML in `$XDG_STATE_HOME/profile-availability`.
 
-**The status log is the state.** `<profile>.txt` only gets a line when the status changes, and its last line is the previous status. A line is `date time status`, followed by the location on `online` lines when one was found; the location may contain spaces, so parse the status as the third whitespace-separated field. Read the previous status before `write_status`, since that call makes the new one the last line. A missing file means an unknown previous status: no email is sent, but a screenshot is still taken when the first status is `online`.
+**The status log is the state.** `<profile>.txt` only gets a line when the status changes, and its last line is the previous status. A line is `date time status`, followed by the location when one was found; the location may contain spaces, so parse the status as the third whitespace-separated field. Read the previous status before `write_status`, since that call makes the new one the last line. A missing file means an unknown previous status, which counts as a change: it goes into the digest as a first check, and a screenshot is taken when the first status is `online`.
 
-**Failures are per profile.** Any exception during a check writes the page source to the debug directory and a line to `<profile>.errors.txt`, then the loop moves on. A mail failure is printed and swallowed, so it never turns into a check failure.
+**Failures are per profile.** Any exception during a check writes the page source to the debug directory and a line to `<profile>.errors.txt`, then the loop moves on. A failed check produces no change for the digest. A mail failure is printed and swallowed, so it never turns into a check failure.
 
 **Resend requires a `User-Agent` header** and rejects requests without one with a 403, so keep the header in `send_mail`.
 

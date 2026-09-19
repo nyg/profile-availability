@@ -69,6 +69,16 @@ class Config:
     mailer: Mailer | None
 
 
+@dataclass(frozen=True)
+class Change:
+    profile: str
+    url: str
+    previous: str | None
+    status: str
+    location: str | None
+    time: datetime
+
+
 def exit_with(message: str) -> NoReturn:
     print(message, file=sys.stderr)
     sys.exit(1)
@@ -139,23 +149,27 @@ def send_mail(mailer: Mailer, subject: str, body: str) -> None:
         raise RuntimeError(f"Resend API error {e.code}: {e.read().decode(errors='replace')}") from e
 
 
-async def notify_change(
-    mailer: Mailer | None, profile: str, url: str, previous: str, status: str, location: str | None
-) -> None:
-    if mailer is None:
+def change_html(change: Change) -> str:
+    link = f'<a href="{html.escape(change.url)}">{html.escape(change.profile)}</a>'
+    time = f"{change.time:%Y-%m-%d %H:%M:%S}"
+    if change.previous is None:
+        text = f"{link} is <b>{change.status}</b> at {time} (first check)."
+    else:
+        text = f"{link} went from <b>{change.previous}</b> to <b>{change.status}</b> at {time}."
+    if change.location:
+        text += f" Location: <b>{html.escape(change.location)}</b>"
+    return f"<p>{text}</p>"
+
+
+async def notify_changes(mailer: Mailer | None, changes: list[Change]) -> None:
+    if mailer is None or not changes:
         return
-    date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    subject = f"{profile} is now {status}"
-    body = (
-        f'<p><a href="{html.escape(url)}">{html.escape(profile)}</a> went from '
-        f"<b>{previous}</b> to <b>{status}</b> at {date}.</p>"
-    )
-    if location:
-        body += f"<p>Location: <b>{html.escape(location)}</b></p>"
+    subject = ", ".join(f"{change.profile} is now {change.status}" for change in changes)
+    body = "".join(change_html(change) for change in changes)
     try:
         await asyncio.to_thread(send_mail, mailer, subject, body)
     except Exception as e:
-        print(f"{date} {profile} → MAIL ERROR: {e}", file=sys.stderr)
+        print(f"{datetime.now():%Y-%m-%d %H:%M:%S} MAIL ERROR: {e}", file=sys.stderr)
 
 
 def profile_from_url(url: str) -> str:
@@ -305,30 +319,38 @@ async def check_status(tab: Tab, site: Site, url: str) -> str:
     return "online"
 
 
+async def check_profile(tab: Tab, site: Site, url: str) -> Change | None:
+    profile = profile_from_url(url)
+    try:
+        status = await check_status(tab, site, url)
+        location = await profile_location(tab, site)
+        previous = get_last_status(profile)
+        write_status(profile, status, location)
+        if status == "online" and previous != "online":
+            await save_screenshot(tab, profile)
+        now = datetime.now()
+        where = f" ({location})" if location else ""
+        print(f"{now:%Y-%m-%d %H:%M:%S} {profile} → {status}{where}")
+        return Change(profile, url, previous, status, location, now) if previous != status else None
+    except Exception as e:
+        await save_debug(tab, profile)
+        write_error(profile, e)
+        print(f"{datetime.now():%Y-%m-%d %H:%M:%S} {profile} → ERROR: {e}", file=sys.stderr)
+        return None
+
+
 async def run_checks(config: Config) -> None:
     browser: Browser = await cdp_driver.start_async(ad_block=True)
     tab: Tab = await browser.get("about:blank")
+    changes: list[Change] = []
     try:
         for url in config.urls:
-            profile = profile_from_url(url)
-            try:
-                status = await check_status(tab, config.site, url)
-                previous = get_last_status(profile)
-                came_online = status == "online" and previous != "online"
-                location = await profile_location(tab, config.site) if came_online else None
-                write_status(profile, status, location)
-                if came_online:
-                    await save_screenshot(tab, profile)
-                print(f"{datetime.now():%Y-%m-%d %H:%M:%S} {profile} → {status}")
-                if previous is not None and previous != status:
-                    await notify_change(config.mailer, profile, url, previous, status, location)
-            except Exception as e:
-                await save_debug(tab, profile)
-                write_error(profile, e)
-                print(f"{datetime.now():%Y-%m-%d %H:%M:%S} {profile} → ERROR: {e}", file=sys.stderr)
+            if change := await check_profile(tab, config.site, url):
+                changes.append(change)
             await tab.sleep(5)
     finally:
         browser.stop()
+    await notify_changes(config.mailer, changes)
 
 
 async def main() -> None:
