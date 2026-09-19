@@ -37,6 +37,8 @@ Point the three XDG variables at a scratch directory to avoid touching the user'
 
 **Failures are per profile.** Any exception during a check writes the page source to the debug directory and a line to `<profile>.errors.txt`, then the loop moves on. A failed check produces no change for the digest. A mail failure is printed and swallowed, so it never turns into a check failure.
 
+**SIGTERM cancels the main task**, and the `finally` in `run_checks` then closes Chrome. Catch `Exception`, never `BaseException` or `asyncio.CancelledError`, inside a round, or `stop.sh` leaves Chrome running.
+
 **Resend requires a `User-Agent` header** and rejects requests without one with a 403, so keep the header in `send_mail`.
 
 ## Don't commit

@@ -3,6 +3,7 @@ import html
 import json
 import os
 import re
+import signal
 import sys
 import tomllib
 import unicodedata
@@ -73,7 +74,6 @@ class Config:
 @dataclass(frozen=True)
 class Change:
     profile: str
-    url: str
     previous: str | None
     status: str
     location: str | None
@@ -151,12 +151,12 @@ def send_mail(mailer: Mailer, subject: str, body: str) -> None:
 
 
 def change_html(change: Change) -> str:
-    link = f'<a href="{html.escape(change.url)}">{html.escape(change.profile)}</a>'
+    profile = html.escape(change.profile)
     time = f"{change.time:%Y-%m-%d %H:%M:%S}"
     if change.previous is None:
-        text = f"{link} is <b>{change.status}</b> at {time} (first check)."
+        text = f"{profile} is <b>{change.status}</b> at {time} (first check)."
     else:
-        text = f"{link} went from <b>{change.previous}</b> to <b>{change.status}</b> at {time}."
+        text = f"{profile} went from <b>{change.previous}</b> to <b>{change.status}</b> at {time}."
     if change.location:
         text += f" Location: <b>{html.escape(change.location)}</b>"
     return f"<p>{text}</p>"
@@ -331,7 +331,7 @@ async def check_profile(tab: Tab, site: Site, url: str) -> Change | None:
         now = datetime.now()
         where = f" ({location})" if location else ""
         print(f"{now:%Y-%m-%d %H:%M:%S} {profile} → {status}{where}")
-        return Change(profile, url, previous, status, location, now) if previous != status else None
+        return Change(profile, previous, status, location, now) if previous != status else None
     except Exception as e:
         await save_debug(tab, profile)
         write_error(profile, e)
@@ -341,9 +341,9 @@ async def check_profile(tab: Tab, site: Site, url: str) -> Change | None:
 
 async def run_checks(config: Config) -> None:
     browser: Browser = await cdp_driver.start_async(ad_block=True)
-    tab: Tab = await browser.get("about:blank")
     changes: list[Change] = []
     try:
+        tab: Tab = await browser.get("about:blank")
         for url in config.urls:
             if change := await check_profile(tab, config.site, url):
                 changes.append(change)
@@ -355,9 +355,11 @@ async def run_checks(config: Config) -> None:
 
 async def main() -> None:
     config = load_config()
-    while True:
-        await run_checks(config)
-        await asyncio.sleep(CHECK_INTERVAL)
+    asyncio.get_running_loop().add_signal_handler(signal.SIGTERM, asyncio.current_task().cancel)
+    with suppress(asyncio.CancelledError):
+        while True:
+            await run_checks(config)
+            await asyncio.sleep(CHECK_INTERVAL)
 
 
 if __name__ == "__main__":

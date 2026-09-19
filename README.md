@@ -45,7 +45,7 @@ Edit `~/.config/profile-availability/config.toml`, then start the checker:
 ~/.local/opt/profile-availability/stop.sh
 ```
 
-`stop.sh` sends `SIGTERM` to the checker started by the `run.sh` next to it and waits up to 10 seconds for it to exit.
+`stop.sh` sends `SIGTERM` to the checker started by the `run.sh` next to it and waits up to 10 seconds for it to exit. On `SIGTERM` the checker closes Chrome before exiting, even in the middle of a round, and skips that round's email.
 
 ## Configuration
 
