@@ -51,6 +51,7 @@ class Site:
     offline_text: str
     ready_selector: str | None
     text_selector: str | None
+    location_selector: str | None
     disclaimer: Disclaimer | None
 
 
@@ -95,6 +96,7 @@ def load_site(site: dict) -> Site:
         offline_text=offline_text,
         ready_selector=site.get("ready_selector") or None,
         text_selector=site.get("text_selector") or None,
+        location_selector=site.get("location_selector") or None,
         disclaimer=load_disclaimer(disclaimer) if disclaimer is not None else None,
     )
 
@@ -137,7 +139,9 @@ def send_mail(mailer: Mailer, subject: str, body: str) -> None:
         raise RuntimeError(f"Resend API error {e.code}: {e.read().decode(errors='replace')}") from e
 
 
-async def notify_change(mailer: Mailer | None, profile: str, url: str, previous: str, status: str) -> None:
+async def notify_change(
+    mailer: Mailer | None, profile: str, url: str, previous: str, status: str, location: str | None
+) -> None:
     if mailer is None:
         return
     date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -146,6 +150,8 @@ async def notify_change(mailer: Mailer | None, profile: str, url: str, previous:
         f'<p><a href="{html.escape(url)}">{html.escape(profile)}</a> went from '
         f"<b>{previous}</b> to <b>{status}</b> at {date}.</p>"
     )
+    if location:
+        body += f"<p>Location: <b>{html.escape(location)}</b></p>"
     try:
         await asyncio.to_thread(send_mail, mailer, subject, body)
     except Exception as e:
@@ -169,21 +175,22 @@ def get_last_status(profile: str) -> str | None:
     path = status_file(profile)
     if not path.exists():
         return None
-    lines = path.read_text().strip().splitlines()
+    lines = path.read_text(encoding="utf-8").strip().splitlines()
     if not lines:
         return None
-    parts = lines[-1].rsplit(maxsplit=1)
-    return parts[1] if len(parts) == 2 else None
+    parts = lines[-1].split(maxsplit=3)
+    return parts[2] if len(parts) >= 3 else None
 
 
-def write_status(profile: str, status: str) -> None:
+def write_status(profile: str, status: str, location: str | None) -> None:
     if get_last_status(profile) == status:
         return
     path = status_file(profile)
     path.parent.mkdir(parents=True, exist_ok=True)
     date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    with path.open("a") as f:
-        f.write(f"{date} {status}\n")
+    line = f"{date} {status} {location}" if location else f"{date} {status}"
+    with path.open("a", encoding="utf-8") as f:
+        f.write(f"{line}\n")
 
 
 def write_error(profile: str, error: Exception) -> None:
@@ -272,6 +279,16 @@ async def page_text(tab: Tab, site: Site) -> str:
     return normalize(" ".join(parts))
 
 
+async def profile_location(tab: Tab, site: Site) -> str | None:
+    if not site.location_selector:
+        return None
+    with suppress(Exception):
+        selector = json.dumps(site.location_selector)
+        text = await tab.evaluate(f"document.querySelector({selector})?.innerText ?? ''")
+        return re.sub(r"\s+", " ", unicodedata.normalize("NFC", text or "")).strip() or None
+    return None
+
+
 async def check_status(tab: Tab, site: Site, url: str) -> str:
     await tab.get(url)
     if site.disclaimer:
@@ -297,12 +314,14 @@ async def run_checks(config: Config) -> None:
             try:
                 status = await check_status(tab, config.site, url)
                 previous = get_last_status(profile)
-                write_status(profile, status)
-                if status == "online" and previous != "online":
+                came_online = status == "online" and previous != "online"
+                location = await profile_location(tab, config.site) if came_online else None
+                write_status(profile, status, location)
+                if came_online:
                     await save_screenshot(tab, profile)
                 print(f"{datetime.now():%Y-%m-%d %H:%M:%S} {profile} → {status}")
                 if previous is not None and previous != status:
-                    await notify_change(config.mailer, profile, url, previous, status)
+                    await notify_change(config.mailer, profile, url, previous, status, location)
             except Exception as e:
                 await save_debug(tab, profile)
                 write_error(profile, e)

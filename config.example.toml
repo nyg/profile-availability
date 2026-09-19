@@ -7,6 +7,7 @@ urls = [
 offline_text = "will be back soon"
 ready_selector = "h1.profile-name"
 text_selector = "p.profile-status"
+location_selector = "span.profile-location"
 
 [site.disclaimer]
 form_selector = "form.age-gate"
