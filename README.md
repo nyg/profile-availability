@@ -42,8 +42,10 @@ Edit `~/.config/profile-availability/config.toml`, then start the checker:
 `run.sh` creates a `.venv` next to itself on first use, installs `requirements.txt` into it, and starts the checker detached with `nohup`, appending its output to `run.log`. It does not stop a running instance, so stop the old one first when restarting:
 
 ```bash
-pkill -f profile-availability.py
+~/.local/opt/profile-availability/stop.sh
 ```
+
+`stop.sh` sends `SIGTERM` to the checker started by the `run.sh` next to it and waits up to 10 seconds for it to exit.
 
 ## Configuration
 
@@ -68,7 +70,7 @@ The file holds the Resend API key, so keep it private (`chmod 600`) and outside 
 
 ## Email
 
-After each round the checker sends one email listing every profile whose status differs from the last recorded one, including profiles checked for the first time. The subject joins one `<profile> is now online` or `<profile> is now offline` per change, and the body gives each change with its time and, when found, the location. A round without changes sends nothing. A failed send is logged as `MAIL ERROR` and does not interrupt the checks.
+After each round the checker sends one email listing every profile whose status differs from the last recorded one, including profiles checked for the first time. The subject is always `Profile availability summary`, and the body gives each change with its time and, when found, the location. A round without changes sends nothing. A failed send is logged as `MAIL ERROR` and does not interrupt the checks.
 
 `resend.from` must be an address on a domain you verified at [resend.com/domains](https://resend.com/domains). Without one, use `onboarding@resend.dev`: it only delivers to the email address of your Resend account.
 

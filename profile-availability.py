@@ -34,6 +34,7 @@ DEBUG_DIR = STATE_DIR / "debug"
 CONFIG_FILE = CONFIG_DIR / "config.toml"
 RESEND_ENDPOINT = "https://api.resend.com/emails"
 MAIL_TIMEOUT = 30
+MAIL_SUBJECT = "Profile availability summary"
 
 
 @dataclass(frozen=True)
@@ -164,10 +165,9 @@ def change_html(change: Change) -> str:
 async def notify_changes(mailer: Mailer | None, changes: list[Change]) -> None:
     if mailer is None or not changes:
         return
-    subject = ", ".join(f"{change.profile} is now {change.status}" for change in changes)
     body = "".join(change_html(change) for change in changes)
     try:
-        await asyncio.to_thread(send_mail, mailer, subject, body)
+        await asyncio.to_thread(send_mail, mailer, MAIL_SUBJECT, body)
     except Exception as e:
         print(f"{datetime.now():%Y-%m-%d %H:%M:%S} MAIL ERROR: {e}", file=sys.stderr)
 

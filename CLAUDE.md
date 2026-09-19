@@ -12,6 +12,7 @@ A single-file Python checker, `profile-availability.py`, that loops forever: eve
 profile-availability.py  the checker
 config.example.toml      template for ~/.config/profile-availability/config.toml
 run.sh                   creates .venv next to itself, installs requirements, starts the checker with nohup
+stop.sh                  stops the checker that run.sh started from the same checkout
 requirements.txt         pinned seleniumbase
 ```
 
