@@ -1,0 +1,18 @@
+urls = [
+  "https://example.com/profiles/alice",
+  "https://example.com/profiles/bob",
+]
+
+[site]
+offline_text = "will be back soon"
+ready_selector = "h1.profile-name"
+text_selector = "p.profile-status"
+
+[site.disclaimer]
+form_selector = "form.age-gate"
+button_label = "Enter"
+
+[resend]
+api_key = "re_..."
+from = "Profile Availability <onboarding@resend.dev>"
+to = ["you@example.com"]
