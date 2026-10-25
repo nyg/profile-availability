@@ -33,19 +33,25 @@ cp ~/.local/opt/profile-availability/config.example.toml ~/.config/profile-avail
 chmod 600 ~/.config/profile-availability/config.toml
 ```
 
-Edit `~/.config/profile-availability/config.toml`, then start the checker:
+Edit `~/.config/profile-availability/config.toml`, then create the `.venv` and start the checker in the foreground:
 
 ```bash
-~/.local/opt/profile-availability/run.sh
+cd ~/.local/opt/profile-availability
+make install
+.venv/bin/python profile-availability.py
 ```
 
-`run.sh` creates a `.venv` next to itself on first use, installs `requirements.txt` into it, and starts the checker detached with `nohup`, appending its output to `run.log`. It does not stop a running instance, so stop the old one first when restarting:
+On `SIGTERM` the checker closes Chrome before exiting, even in the middle of a round, and skips that round's email.
+
+### Always-on (Linux, e.g. a Raspberry Pi)
 
 ```bash
-~/.local/opt/profile-availability/stop.sh
+make install-service
 ```
 
-`stop.sh` sends `SIGTERM` to the checker started by the `run.sh` next to it and waits up to 10 seconds for it to exit. On `SIGTERM` the checker closes Chrome before exiting, even in the middle of a round, and skips that round's email.
+This installs `requirements.txt` into the `.venv` and installs and starts a systemd user service. The checker then starts at boot, without a login (the target enables lingering for your user), and restarts if it crashes. Its output goes to the journal.
+
+`make status`, `make logs`, `make restart` and `make stop` manage it, and `make uninstall-service` removes it. To update, `git pull`, then `make install-service` again: it reinstalls the requirements and restarts the service.
 
 ## Configuration
 
@@ -80,7 +86,6 @@ After each round the checker sends one email listing every profile whose status 
 | --- | --- |
 | `$XDG_DATA_HOME/profile-availability/<profile>.txt` | One line per status change: `YYYY-MM-DD HH:MM:SS <status> <location>`, the location only when `location_selector` found one |
 | `$XDG_DATA_HOME/profile-availability/<profile>.errors.txt` | One line per failed check |
-| `$XDG_DATA_HOME/profile-availability/run.log` | Output of the checker when started with `run.sh` |
 | `$XDG_STATE_HOME/profile-availability/screenshots/` | Full-page PNG each time a profile comes online |
 | `$XDG_STATE_HOME/profile-availability/debug/` | Page source saved on each failed check |
 
