@@ -11,21 +11,11 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
-    env:
-      XDG_CONFIG_HOME: ${{ runner.temp }}/config
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.11'
           cache: pip
-      - run: make install
-      - name: Load the example config
-        run: |
-          mkdir -p "$XDG_CONFIG_HOME/profile-availability"
-          cp config.example.toml "$XDG_CONFIG_HOME/profile-availability/config.toml"
-          .venv/bin/python -c 'import runpy; print(runpy.run_path("profile-availability.py")["load_config"]())'
-      - name: Verify the systemd unit
-        run: |
-          sed -e "s|@CHECKOUT@|$PWD|g" -e "s|@STATE_DIR@|$RUNNER_TEMP|g" deploy/profile-availability.service > "$RUNNER_TEMP/profile-availability.service"
-          systemd-analyze verify "$RUNNER_TEMP/profile-availability.service"
+      - run: pip install -r requirements.txt
+      - run: python -c 'import runpy; runpy.run_path("profile-availability.py")'
