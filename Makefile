@@ -3,9 +3,11 @@
 SERVICE := profile-availability
 UNIT_DIR := $(if $(XDG_CONFIG_HOME),$(XDG_CONFIG_HOME),$(HOME)/.config)/systemd/user
 STATE_DIR := $(if $(XDG_STATE_HOME),$(XDG_STATE_HOME),$(HOME)/.local/state)/$(SERVICE)
+PYTHON ?= $(shell pyenv which python3 2>/dev/null)
 
 install:
-	python3 -m venv .venv
+	$(if $(PYTHON),,$(error pyenv not found: run from a login shell, or pass PYTHON=/path/to/python3))
+	$(PYTHON) -m venv --clear .venv
 	.venv/bin/pip install --quiet --upgrade pip
 	.venv/bin/pip install --quiet -r requirements.txt
 

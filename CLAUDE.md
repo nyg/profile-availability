@@ -13,7 +13,7 @@ make install
 XDG_CONFIG_HOME=/some/scratch/config XDG_DATA_HOME=/some/scratch/data XDG_STATE_HOME=/some/scratch/state .venv/bin/python profile-availability.py
 ```
 
-Point the three XDG variables at a scratch directory to avoid touching the user's real config, status history and screenshots. There is no test suite; CI (`.github/workflows/ci.yml`) only installs the requirements and imports the checker. Config loading and mail sending can be exercised without Chrome by stubbing the `seleniumbase` modules in `sys.modules` before importing the script, and by pointing `RESEND_ENDPOINT` at a local HTTP server.
+`make install` rebuilds `.venv` from scratch with `pyenv which python3`, and stops when pyenv is not on `PATH` rather than falling back to the system Python; over SSH or from cron, run it in a login shell (`bash -lc`) or pass `PYTHON=`. Point the three XDG variables at a scratch directory to avoid touching the user's real config, status history and screenshots. There is no test suite; CI (`.github/workflows/ci.yml`) only installs the requirements and imports the checker. Config loading and mail sending can be exercised without Chrome by stubbing the `seleniumbase` modules in `sys.modules` before importing the script, and by pointing `RESEND_ENDPOINT` at a local HTTP server.
 
 ## Conventions
 
