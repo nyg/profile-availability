@@ -6,16 +6,6 @@ Guidance for AI coding agents working in this repo. Keep it accurate: update it 
 
 A single-file Python checker, `profile-availability.py`, that loops forever: every `CHECK_INTERVAL` seconds it opens each configured profile URL in Chrome through SeleniumBase's CDP driver, decides `online` or `offline` from the page text, reads the location, records changes, and emails each round's changes as one digest through the Resend REST API. [README.md](README.md) documents the user-facing behavior, config keys and files.
 
-## Layout
-
-```
-profile-availability.py  the checker
-config.example.toml      template for ~/.config/profile-availability/config.toml
-Makefile                 install creates .venv; install-service runs the checker as a systemd user service
-deploy/                  the unit template; install-service fills in the checkout and state paths
-requirements.txt         pinned seleniumbase
-```
-
 ## Run
 
 ```bash
