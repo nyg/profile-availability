@@ -14,6 +14,7 @@ config.example.toml      template for ~/.config/profile-availability/config.toml
 Makefile                 install creates .venv; install-service runs the checker as a systemd user service
 deploy/                  the unit template; install-service fills in the checkout and state paths
 requirements.txt         pinned seleniumbase
+renovate.json            Renovate config, extends the shared nyg/renovate-presets
 ```
 
 ## Run
