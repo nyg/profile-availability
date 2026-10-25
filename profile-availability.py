@@ -36,6 +36,11 @@ CONFIG_FILE = CONFIG_DIR / "config.toml"
 RESEND_ENDPOINT = "https://api.resend.com/emails"
 MAIL_TIMEOUT = 30
 MAIL_SUBJECT = "Profile availability summary"
+CHROME_ERROR_URL = "chrome-error://"
+
+
+class PageLoadError(Exception):
+    pass
 
 
 @dataclass(frozen=True)
@@ -303,8 +308,16 @@ async def profile_location(tab: Tab, site: Site) -> str | None:
     return None
 
 
+async def load_error(tab: Tab) -> str | None:
+    if not (await tab.evaluate("document.URL") or "").startswith(CHROME_ERROR_URL):
+        return None
+    return await tab.evaluate("document.querySelector('.error-code')?.innerText ?? ''") or "unknown error"
+
+
 async def check_status(tab: Tab, site: Site, url: str) -> str:
     await tab.get(url)
+    if error := await load_error(tab):
+        raise PageLoadError(f"Page did not load: {error}")
     if site.disclaimer:
         await dismiss_disclaimer(tab, site.disclaimer)
     if site.ready_selector:
@@ -332,11 +345,17 @@ async def check_profile(tab: Tab, site: Site, url: str) -> Change | None:
         where = f" ({location})" if location else ""
         print(f"{now:%Y-%m-%d %H:%M:%S} {profile} → {status}{where}")
         return Change(profile, previous, status, location, now) if previous != status else None
+    except PageLoadError as e:
+        report_error(profile, e)
     except Exception as e:
         await save_debug(tab, profile)
-        write_error(profile, e)
-        print(f"{datetime.now():%Y-%m-%d %H:%M:%S} {profile} → ERROR: {e}", file=sys.stderr)
-        return None
+        report_error(profile, e)
+    return None
+
+
+def report_error(profile: str, error: Exception) -> None:
+    write_error(profile, error)
+    print(f"{datetime.now():%Y-%m-%d %H:%M:%S} {profile} → ERROR: {error}", file=sys.stderr)
 
 
 async def run_checks(config: Config) -> None:

@@ -8,7 +8,7 @@ Nothing about the watched site is hardcoded: the URLs, the offline text, the sel
 
 Every 5 minutes the script starts Chrome through [SeleniumBase](https://github.com/seleniumbase/SeleniumBase)'s CDP mode and visits each URL in turn:
 
-1. Load the page.
+1. Load the page. If Chrome shows its own error page instead, for example without network access, the check fails with Chrome's error code, such as `DNS_PROBE_FINISHED_NXDOMAIN`.
 2. If `[site.disclaimer]` is configured and its form shows up within 5 seconds, click the control whose label matches `button_label`, then wait up to 15 seconds for the form to go away.
 3. If `ready_selector` is configured, wait up to 10 seconds for it to appear.
 4. Read the page text (`document.body.innerText`, plus the text of every `text_selector` element) and normalize it: NFC, non-breaking spaces to spaces, whitespace collapsed, lowercase. If `offline_text` appears within 5 seconds the profile is offline, otherwise it is online.
@@ -87,7 +87,7 @@ After each round the checker sends one email listing every profile whose status 
 | `$XDG_DATA_HOME/profile-availability/<profile>.txt` | One line per status change: `YYYY-MM-DD HH:MM:SS <status> <location>`, the location only when `location_selector` found one |
 | `$XDG_DATA_HOME/profile-availability/<profile>.errors.txt` | One line per failed check |
 | `$XDG_STATE_HOME/profile-availability/screenshots/` | Full-page PNG each time a profile comes online |
-| `$XDG_STATE_HOME/profile-availability/debug/` | Page source saved on each failed check |
+| `$XDG_STATE_HOME/profile-availability/debug/` | Page source saved on each failed check, unless the page did not load |
 
 `XDG_DATA_HOME` defaults to `~/.local/share` and `XDG_STATE_HOME` to `~/.local/state`.
 
