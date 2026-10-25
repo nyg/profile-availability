@@ -1,0 +1,16 @@
+[Unit]
+Description=Profile availability checker
+
+[Service]
+# SeleniumBase writes downloaded_files/ into the working directory, so keep it out of the checkout.
+StateDirectory=profile-availability
+WorkingDirectory=%S/profile-availability
+ExecStart=@CHECKOUT@/.venv/bin/python @CHECKOUT@/profile-availability.py
+Environment=PYTHONUNBUFFERED=1
+# SIGTERM goes to the checker only, which closes Chrome itself; anything left gets SIGKILL after the timeout.
+KillMode=mixed
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

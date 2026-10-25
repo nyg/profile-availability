@@ -11,15 +11,15 @@ A single-file Python checker, `profile-availability.py`, that loops forever: eve
 ```
 profile-availability.py  the checker
 config.example.toml      template for ~/.config/profile-availability/config.toml
-run.sh                   creates .venv next to itself, installs requirements, starts the checker with nohup
-stop.sh                  stops the checker that run.sh started from the same checkout
+Makefile                 install creates .venv; install-service runs the checker as a systemd user service
+deploy/                  the unit template; install-service fills in the checkout path
 requirements.txt         pinned seleniumbase
 ```
 
 ## Run
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+make install
 XDG_CONFIG_HOME=/some/scratch/config XDG_DATA_HOME=/some/scratch/data XDG_STATE_HOME=/some/scratch/state .venv/bin/python profile-availability.py
 ```
 
@@ -31,13 +31,13 @@ Point the three XDG variables at a scratch directory to avoid touching the user'
 
 **Standard library only, apart from SeleniumBase.** The config is TOML read with `tomllib` (so Python 3.11+), and Resend is called with `urllib.request`. Don't add `requests`, `httpx` or `python-dotenv` for this.
 
-**Paths follow XDG** and never point inside the checkout: config in `$XDG_CONFIG_HOME/profile-availability`, status and error logs plus `run.log` in `$XDG_DATA_HOME/profile-availability`, screenshots and debug HTML in `$XDG_STATE_HOME/profile-availability`.
+**Paths follow XDG** and never point inside the checkout: config in `$XDG_CONFIG_HOME/profile-availability`, status and error logs in `$XDG_DATA_HOME/profile-availability`, screenshots and debug HTML in `$XDG_STATE_HOME/profile-availability`. The service also runs from that state directory, because SeleniumBase writes `downloaded_files/` into the working directory. Output goes to the journal (`make logs`).
 
 **The status log is the state.** `<profile>.txt` only gets a line when the status changes, and its last line is the previous status. A line is `date time status`, followed by the location when one was found; the location may contain spaces, so parse the status as the third whitespace-separated field. Read the previous status before `write_status`, since that call makes the new one the last line. A missing file means an unknown previous status, which counts as a change: it goes into the digest as a first check, and a screenshot is taken when the first status is `online`.
 
 **Failures are per profile.** Any exception during a check writes the page source to the debug directory and a line to `<profile>.errors.txt`, then the loop moves on. A failed check produces no change for the digest. A mail failure is printed and swallowed, so it never turns into a check failure.
 
-**SIGTERM cancels the main task**, and the `finally` in `run_checks` then closes Chrome. Catch `Exception`, never `BaseException` or `asyncio.CancelledError`, inside a round, or `stop.sh` leaves Chrome running.
+**SIGTERM cancels the main task**, and the `finally` in `run_checks` then closes Chrome. Catch `Exception`, never `BaseException` or `asyncio.CancelledError`, inside a round, or stopping the service leaves Chrome running. The unit uses `KillMode=mixed` so systemd sends SIGTERM to the checker alone and lets it close Chrome.
 
 **Resend requires a `User-Agent` header** and rejects requests without one with a 403, so keep the header in `send_mail`.
 
