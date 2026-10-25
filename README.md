@@ -20,7 +20,7 @@ The profile name is the last path segment of its URL, so `https://example.com/pr
 
 ## Requirements
 
-- Python 3.11 or newer
+- Python 3.11 or newer, from [pyenv](https://github.com/pyenv/pyenv) unless you pass `PYTHON=/path/to/python3` to `make`
 - Google Chrome or Chromium
 - macOS or Linux
 
@@ -51,7 +51,7 @@ make install-service
 
 This installs `requirements.txt` into the `.venv` and installs and starts a systemd user service. The checker then starts at boot, without a login (the target enables lingering for your user), and restarts if it crashes. Its output goes to the journal.
 
-`make status`, `make logs`, `make restart` and `make stop` manage it, and `make uninstall-service` removes it. To update, `git pull`, then `make install-service` again: it reinstalls the requirements and restarts the service.
+`make status`, `make logs`, `make restart` and `make stop` manage it, and `make uninstall-service` removes it. To update, `git pull`, then `make install-service` again: it rebuilds the `.venv` with pyenv's current `python3`, reinstalls the requirements and restarts the service. Do the same after changing pyenv's Python version, before removing the old one, since the `.venv` links to the exact version it was built with.
 
 ## Configuration
 
