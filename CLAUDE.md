@@ -12,7 +12,7 @@ A single-file Python checker, `profile-availability.py`, that loops forever: eve
 profile-availability.py  the checker
 config.example.toml      template for ~/.config/profile-availability/config.toml
 Makefile                 install creates .venv; install-service runs the checker as a systemd user service
-deploy/                  the unit template; install-service fills in the checkout path
+deploy/                  the unit template; install-service fills in the checkout and state paths
 requirements.txt         pinned seleniumbase
 ```
 
@@ -31,7 +31,7 @@ Point the three XDG variables at a scratch directory to avoid touching the user'
 
 **Standard library only, apart from SeleniumBase.** The config is TOML read with `tomllib` (so Python 3.11+), and Resend is called with `urllib.request`. Don't add `requests`, `httpx` or `python-dotenv` for this.
 
-**Paths follow XDG** and never point inside the checkout: config in `$XDG_CONFIG_HOME/profile-availability`, status and error logs in `$XDG_DATA_HOME/profile-availability`, screenshots and debug HTML in `$XDG_STATE_HOME/profile-availability`. The service also runs from that state directory, because SeleniumBase writes `downloaded_files/` into the working directory. Output goes to the journal (`make logs`).
+**Paths follow XDG** and never point inside the checkout: config in `$XDG_CONFIG_HOME/profile-availability`, status and error logs in `$XDG_DATA_HOME/profile-availability`, screenshots and debug HTML in `$XDG_STATE_HOME/profile-availability`. The service also runs from that state directory, because SeleniumBase writes `downloaded_files/` into the working directory. The Makefile fills in that path rather than using `StateDirectory=` or `%S`, which mean `~/.config` in user units on older systemd such as Debian 12's 252. Output goes to the journal (`make logs`).
 
 **The status log is the state.** `<profile>.txt` only gets a line when the status changes, and its last line is the previous status. A line is `date time status`, followed by the location when one was found; the location may contain spaces, so parse the status as the third whitespace-separated field. Read the previous status before `write_status`, since that call makes the new one the last line. A missing file means an unknown previous status, which counts as a change: it goes into the digest as a first check, and a screenshot is taken when the first status is `online`.
 

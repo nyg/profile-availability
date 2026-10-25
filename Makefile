@@ -2,6 +2,7 @@
 
 SERVICE := profile-availability
 UNIT_DIR := $(if $(XDG_CONFIG_HOME),$(XDG_CONFIG_HOME),$(HOME)/.config)/systemd/user
+STATE_DIR := $(if $(XDG_STATE_HOME),$(XDG_STATE_HOME),$(HOME)/.local/state)/$(SERVICE)
 
 install:
 	python3 -m venv .venv
@@ -9,8 +10,8 @@ install:
 	.venv/bin/pip install --quiet -r requirements.txt
 
 install-service: install
-	mkdir -p $(UNIT_DIR)
-	sed -e 's|@CHECKOUT@|$(CURDIR)|g' deploy/$(SERVICE).service > $(UNIT_DIR)/$(SERVICE).service
+	mkdir -p $(UNIT_DIR) $(STATE_DIR)
+	sed -e 's|@CHECKOUT@|$(CURDIR)|g' -e 's|@STATE_DIR@|$(STATE_DIR)|g' deploy/$(SERVICE).service > $(UNIT_DIR)/$(SERVICE).service
 	systemctl --user daemon-reload
 	systemctl --user enable $(SERVICE)
 	systemctl --user restart $(SERVICE)
