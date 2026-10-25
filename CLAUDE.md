@@ -13,7 +13,7 @@ make install
 XDG_CONFIG_HOME=/some/scratch/config XDG_DATA_HOME=/some/scratch/data XDG_STATE_HOME=/some/scratch/state .venv/bin/python profile-availability.py
 ```
 
-Point the three XDG variables at a scratch directory to avoid touching the user's real config, status history and screenshots. There is no test suite. Config loading and mail sending can be exercised without Chrome by stubbing the `seleniumbase` modules in `sys.modules` before importing the script, and by pointing `RESEND_ENDPOINT` at a local HTTP server.
+Point the three XDG variables at a scratch directory to avoid touching the user's real config, status history and screenshots. There is no test suite; CI (`.github/workflows/ci.yml`) runs `make install`, loads `config.example.toml` through the checker and verifies the systemd unit, so keep the example config valid. Config loading and mail sending can be exercised without Chrome by stubbing the `seleniumbase` modules in `sys.modules` before importing the script, and by pointing `RESEND_ENDPOINT` at a local HTTP server.
 
 ## Conventions
 
